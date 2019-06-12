@@ -7,6 +7,7 @@
 
 from ciscoconfparse import CiscoConfParse
 import sys
+import csv
 
 class Port:
 
@@ -80,11 +81,18 @@ def main():
             port.find_mode(parse, conf_file)
             port.find_vlans(parse, conf_file)
             Port_list[i] = port
+
+        # Clean the path to isolate just <name>.<extension>
+        while conf_file.find('/') != -1:
+            conf_file = conf_file[conf_file.find('/')+1:]
         
         print(len(Port_list), " port has been found")
-        for i in range(len(Port_list)):
-            print(Port_list[i].name, " mode: ", Port_list[i].mode, " vlan: ", str(Port_list[i].vlan), " and description: ", Port_list[i].description) 
-
+        with open(conf_file[:conf_file.find('.')] + '-parsed.csv', 'w') as file:
+            writer = csv.writer(file, delimiter=',')
+            writer.writerow(['port','switchport', 'vlan', 'description'])
+            for i in range(len(Port_list)):
+                writer.writerow([Port_list[i].name, Port_list[i].mode, Port_list[i].vlan, Port_list[i].description])
+                print(Port_list[i].name, " mode: ", Port_list[i].mode, " vlan: ", str(Port_list[i].vlan), " and description: ", Port_list[i].description) 
          
 if __name__ == '__main__':
     main()
