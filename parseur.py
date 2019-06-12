@@ -6,8 +6,7 @@
 ################################################################
 
 from ciscoconfparse import CiscoConfParse
-
-conf_file = ''
+import sys
 
 class Port:
 
@@ -23,27 +22,29 @@ class Port:
         self.description = description
 
     def find_mode(self, parse, conf_file):
-        try:
+        if parse.find_children_w_parents(r'%s' %self.name, r'switchport mode') != []:
             intf = parse.find_children_w_parents(r'%s' %self.name, r'switchport mode')[0]
             self.mode = intf.replace('switchport mode ','').replace(' ','')
-        except:
+        else:
             self.mode = "mode not found"
 
     def find_vlans(self, parse, conf_file):
         if self.mode == 'access':
-            try:
+            if parse.find_children_w_parents(r'%s' %self.name, r'authentication event server dead action authorize vlan') != []:
                 intf = parse.find_children_w_parents(r'%s' %self.name, r'authentication event server dead action authorize vlan')[0]
                 self.vlan = intf.replace('authentication event server dead action authorize vlan ', '').replace(' ', '')
-            except:
-                self.vlan = 0
+            else:
+                if parse.find_children_w_parents(r'%s' %self.name, r'switchport access vlan') != []:
+                    intf = parse.find_children_w_parents(r'%s' %self.name, r'switchport access vlan')[0]
+                    self.vlan = intf.replace('switchport access vlan ', '').replace(' ', '')
         else:
             self.vlan = 0
 
     def find_port_description(self, parse, conf_file):
-        try:
+        if parse.find_children_w_parents(r'%s' %self.name, r'description') != []:
             intf = parse.find_children_w_parents(r'%s' %self.name, r'description')[0]
             self.description = intf.replace('description ','')
-        except:
+        else:
             self.description = "Description not found"
 
 def find_every_gigabit_ports(parse, Port_list, conf_file):
@@ -62,22 +63,27 @@ def find_every_fast_ports(parse, Port_list, conf_file):
         Port_list.append(intf[i].text)
 
 def main():
-    parse = CiscoConfParse(conf_file, factory=True)
-    Port_list = []
-    find_every_gigabit_ports(parse, Port_list, conf_file)
-    find_every_ten_gigabit_ports(parse, Port_list, conf_file)
-    find_every_fast_ports(parse, Port_list, conf_file)
-    
-    for i in range(len(Port_list)):
-        port = Port(Port_list[i], "", 0, "Default")
-        port.find_port_description(parse, conf_file)
-        port.find_mode(parse, conf_file)
-        port.find_vlans(parse, conf_file)
-        Port_list[i] = port
-    
-    print(len(Port_list), " port has been found")
-    for i in range(len(Port_list)):
-        print(Port_list[i].name, " mode: ", Port_list[i].mode, " vlan: ", str(Port_list[i].vlan), " and description: ", Port_list[i].description) 
+    if len(sys.argv) != 2:
+        sys.exit("Usage: ./parseur.py <your_file>")
+
+    else :
+        conf_file = sys.argv[1]
+        parse = CiscoConfParse(conf_file, factory=True)
+        Port_list = []
+        find_every_gigabit_ports(parse, Port_list, conf_file)
+        find_every_ten_gigabit_ports(parse, Port_list, conf_file)
+        find_every_fast_ports(parse, Port_list, conf_file)
+        
+        for i in range(len(Port_list)):
+            port = Port(Port_list[i], "", 0, "Default")
+            port.find_port_description(parse, conf_file)
+            port.find_mode(parse, conf_file)
+            port.find_vlans(parse, conf_file)
+            Port_list[i] = port
+        
+        print(len(Port_list), " port has been found")
+        for i in range(len(Port_list)):
+            print(Port_list[i].name, " mode: ", Port_list[i].mode, " vlan: ", str(Port_list[i].vlan), " and description: ", Port_list[i].description) 
 
          
 if __name__ == '__main__':
